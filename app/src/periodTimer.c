@@ -4,7 +4,7 @@
 #include<stdbool.h>
 #include<string.h>
 
-#include "hal/periodTimer.h"
+#include "../include/periodTimer.h"
 
 // Written by Brian Fraser
 

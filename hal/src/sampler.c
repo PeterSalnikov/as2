@@ -1,8 +1,9 @@
 #include "hal/sampler.h"
 
 static pthread_t tid;
+static pthread_mutex_t s_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static bool is_initialized;
+static bool is_initialized = false;
 
 static long long size_allSamples = 0;
 static double average = 0.0;
@@ -15,6 +16,9 @@ static long size_history = 0;
 double history[MAX_EVENT_TIMESTAMPS];
 
 static double a = 0.001;
+
+// My actual thread function
+static void *sampler_readVoltage(void *args);
 
 /* 
 - Creates a thread that runs until a global exit message is read
@@ -36,7 +40,7 @@ void sampler_cleanup()
     }
 }
 
-void *sampler_readVoltage(void *arg)
+static void *sampler_readVoltage(void *arg)
 {
     (void) arg;
     char *ret = malloc(5*sizeof(char));
@@ -51,10 +55,13 @@ void *sampler_readVoltage(void *arg)
     while(is_initialized && size_currentSamples < MAX_EVENT_TIMESTAMPS) {
 
         if(time_getTimeInMs() - sampleSecondStart >= 1000) {
-            printf("%lld\n",size_allSamples);
+            // printf("%lld\n",size_allSamples);
             sampleSecondStart = time_getTimeInMs();
-            sampler_moveCurrentDataToHistory();
-
+            pthread_mutex_lock(&s_lock);
+            {
+                sampler_moveCurrentDataToHistory();
+            }
+            pthread_mutex_unlock(&s_lock);
         }
 
         FILE* voltageFile = fopen(IN_VOLTAGE1_RAW_FILE, "r");
@@ -64,7 +71,7 @@ void *sampler_readVoltage(void *arg)
         }
 
         {
-        fgets(ret,5*sizeof(char),voltageFile);
+            fgets(ret,5*sizeof(char),voltageFile);
         }
 
         fclose(voltageFile);

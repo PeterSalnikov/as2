@@ -6,7 +6,11 @@
         "time.h": "c",
         "assert.h": "c",
         "stdbool.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "time_helpers.h": "c",
+        "periodtimer.h": "c",
+        "utils.h": "c",
+        "unistd.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

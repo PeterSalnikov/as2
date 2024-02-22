@@ -34,8 +34,6 @@
 void sampler_init(void);
 void sampler_cleanup(void);
 
-void *sampler_readVoltage(void *arg);
-
 /* 
 Must be called once every 1s.
 Moves the samples that it has been collecting this second into
