@@ -27,9 +27,11 @@ void udp_cleanup()
 static void * udp_listener(void *args) 
 {
     (void) args;
+    char lastMessage[50] = {0};
+
+    char buffer[50] = {0};
     while (is_initialized) {
 
-        char buffer[50] = {0};
         struct sockaddr_in servaddr = {0};
         struct sockaddr_in cliaddr = {0};
 
@@ -57,28 +59,60 @@ static void * udp_listener(void *args)
         // socklen_t len = 0;
         socklen_t len = sizeof(cliaddr);
 
-
-        // int n = recvfrom(sockfd, (char *)buffer, 50, MSG_WAITALL,
-        //                  0, &len);
-
         int n = recvfrom(sockfd, (char *)buffer, 50, MSG_WAITALL,
                          (struct sockaddr *)&cliaddr, &len);
         buffer[n] = '\n';
 
-        if(strncmp(buffer,"history",5) == 0) {
-            printf("Hooray!\n");
-            sendto(sockfd, (const char *) "you did it", 10, MSG_CONFIRM,
+        if(buffer[0] - '\n' == 0) {
+            snprintf(buffer,50,lastMessage);
+        }
+
+        if(strncmp(buffer,"help", 4) == 0 || strncmp(buffer,"?",1) == 0) {
+
+            char *message = 
+            "Accepted command examples:"
+            "\ncount      -- get the total number of samples taken."
+            "\nlength     -- get the number of samples taken in the previously"
+            "completed period."
+            "\ndips       -- get the number of dips in the previously completed second."
+            "\nhistory    -- get all the samples in the previously completed second."
+            "\nstop       -- cause the server program to end."
+            "\n<enter>    -- repeat last command.\n";
+
+            sendto(sockfd, (const char *) message, strlen(message), MSG_CONFIRM,
                 (const struct sockaddr *)&cliaddr, sizeof(cliaddr));
-            // int len = sampler_getHistorySize();
-            // double *history = sampler_getHistory(&len);
-            // printf("history size: %d\n", len);
-            // printf("history[0] = %f\n",history[0]);
-            // for(int i = 0; i < len; i++) {
-            //     // printf("%d\n",i);
-            //     printf("%f ",history[i]);
-            // }
+        }
+
+        else if(strncmp(buffer,"history",7) == 0) {
+            printf("Hooray!\n");
+
+            int len = sampler_getHistorySize();
+            char hist_asStr[MAX_EVENT_TIMESTAMPS*sizeof(double)];
+            double * hist_asDbl = sampler_getHistory(&len);
+            int written;
+            int offset = 0;
+            for(int i = 0; i < len; i++) {
+                // hist_asStr[i] = hist_asDbl[i];
+                if(i % 11 == 0) {
+                    written = snprintf(hist_asStr + offset, 2*sizeof(char),"\n");
+                }
+                else {
+                    if(i != len-1)
+                        written = snprintf(hist_asStr + offset,sizeof(double)+2*sizeof(char),"%0.3f, ",hist_asDbl[i]);
+                    else
+                        written = snprintf(hist_asStr + offset,sizeof(double)+2*sizeof(char),"%0.3f\n",hist_asDbl[i]);
+                }
+                offset += written;
+            }
+
+            printf("%d\n",strlen(hist_asStr));
+
+            sendto(sockfd, (const char *) hist_asStr, strlen(hist_asStr), MSG_CONFIRM,
+                (const struct sockaddr *)&cliaddr, sizeof(cliaddr));
 
         }
+
+        snprintf(lastMessage, 50, buffer);
 
         close(sockfd);
     }
