@@ -12,3 +12,4 @@
 
 void udp_init(void);
 void udp_cleanup(void);
+bool udp_isInitialized();

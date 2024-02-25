@@ -10,7 +10,8 @@
         "time_helpers.h": "c",
         "periodtimer.h": "c",
         "utils.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "sampler.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

@@ -1,4 +1,5 @@
 #include "hal/sampler.h"
+#include"periodTimer.h"
 
 static pthread_t tid;
 static pthread_mutex_t s_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -9,6 +10,9 @@ static long long size_allSamples = 0;
 static double average = 0.0;
 static double currentReading = 0.0;
 
+static int dips = 0;
+static bool hasDipped = false;
+
 static long size_currentSamples = 0;
 static double currentSamples[MAX_EVENT_TIMESTAMPS];
 
@@ -16,6 +20,8 @@ static long size_history = 0;
 double history[MAX_EVENT_TIMESTAMPS];
 
 static double a = 0.001;
+
+static Period_statistics_t statistics;
 
 // My actual thread function
 static void *sampler_readVoltage(void *args);
@@ -52,17 +58,35 @@ static void *sampler_readVoltage(void *arg)
 
     long long sampleSecondStart = time_getTimeInMs();
 
+
+    statistics.numSamples = 0;
+    statistics.minPeriodInMs = 0.0;
+    statistics.maxPeriodInMs = 0.0;
+    statistics.avgPeriodInMs = 0.0;
+
     while(is_initialized && size_currentSamples < MAX_EVENT_TIMESTAMPS) {
 
         if(time_getTimeInMs() - sampleSecondStart >= 1000) {
             // printf("%lld\n",size_allSamples);
-            sampleSecondStart = time_getTimeInMs();
+            // printf("yo?");
+            // printf("%d, \n",dips);
+            period_getStatisticsAndClear(PERIOD_EVENT_SAMPLE_LIGHT, &statistics);
+            printf(
+                "#Smpl/s = %4ld  POT @ HLD => 69Hz   avg = %4.3f    dips = %2d    "
+                "Smpl ms[%5.3f, %5.3f] avg %4.3f\n"
+                
+            ,size_currentSamples,average,dips, statistics.minPeriodInMs,statistics.maxPeriodInMs
+            ,statistics.avgPeriodInMs);
+            dips = 0;
             pthread_mutex_lock(&s_lock);
             {
                 sampler_moveCurrentDataToHistory();
             }
             pthread_mutex_unlock(&s_lock);
+            sampleSecondStart = time_getTimeInMs();
         }
+
+        period_markEvent(PERIOD_EVENT_SAMPLE_LIGHT);
 
         FILE* voltageFile = fopen(IN_VOLTAGE1_RAW_FILE, "r");
         if(voltageFile == NULL) {
@@ -78,6 +102,15 @@ static void *sampler_readVoltage(void *arg)
 
         char *endPtr;
         currentReading = (strtod(ret,&endPtr) * REF_VOLTAGE) / RESOLUTION;
+
+        if(hasDipped && currentReading >= average - 0.07) {
+            hasDipped = false;
+        }
+
+        if(!hasDipped && currentReading < average - 0.1) {
+            hasDipped = true;
+            dips++;
+        }
 
         currentSamples[size_currentSamples] = currentReading;
         size_currentSamples++;
@@ -110,6 +143,11 @@ void sampler_moveCurrentDataToHistory()
     }
     size_history = size_currentSamples;
     size_currentSamples = 0;
+}
+
+int sampler_getDips()
+{
+    return dips;
 }
 
 int sampler_getHistorySize()

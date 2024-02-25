@@ -1,6 +1,7 @@
 #include "udp.h"
 
 static pthread_t tid;
+static pthread_mutex_t s_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static bool is_initialized = false;
 
@@ -24,13 +25,17 @@ void udp_cleanup()
     }
 }
 
+bool udp_isInitialized() {
+    return is_initialized;
+}
+
 static void * udp_listener(void *args) 
 {
     (void) args;
     char lastMessage[50] = {0};
 
     char buffer[50] = {0};
-    while (is_initialized) {
+    while (1) {
 
         struct sockaddr_in servaddr = {0};
         struct sockaddr_in cliaddr = {0};
@@ -63,11 +68,59 @@ static void * udp_listener(void *args)
                          (struct sockaddr *)&cliaddr, &len);
         buffer[n] = '\n';
 
+        // main thread logic, input case handling
+        // errant inputs will put out the 'help' prompt.
         if(buffer[0] - '\n' == 0) {
             snprintf(buffer,50,lastMessage);
         }
 
-        if(strncmp(buffer,"help", 4) == 0 || strncmp(buffer,"?",1) == 0) {
+        if(strncmp(buffer,"history",7) == 0) {
+
+            char hist_asStr[MAX_EVENT_TIMESTAMPS*(sizeof(double)+2*sizeof(char))];
+            
+            pthread_mutex_lock(&s_lock);
+            
+                int len = sampler_getHistorySize();
+
+                double *hist_asDbl = sampler_getHistory(&len);
+            
+            pthread_mutex_unlock(&s_lock);
+            int written;
+            int offset = 0;
+            for(int i = 0; i < len; i++) {
+                int remaining = MAX_EVENT_TIMESTAMPS*(sizeof(double)+2*sizeof(char));
+                // printf("%d<%d,",i,len);
+                // hist_asStr[i] = hist_asDbl[i];
+                if(i % 11 == 0) {
+                    written = snprintf(hist_asStr + offset, 2*sizeof(char),"\n");
+                    offset += written;
+                }
+
+                if(i != len-1) {
+                    written = snprintf(hist_asStr + offset,sizeof(double)+2*sizeof(char),"%0.3f, ",hist_asDbl[i]);
+                }
+                else {
+                    written = snprintf(hist_asStr + offset,sizeof(double)+2*sizeof(char),"%0.3f\n",hist_asDbl[i]);
+                }
+
+                offset += written;
+                remaining -= written;
+            }
+
+            sendto(sockfd, (const char *) hist_asStr, strlen(hist_asStr), MSG_CONFIRM,
+                (const struct sockaddr *)&cliaddr, sizeof(cliaddr));
+            // printf("%d\n",strlen(hist_asStr));
+            // printf("length is %d",sampler_getHistorySize());
+            // printf("%s",toCompareWith);
+        }
+
+        else if(strncmp(buffer,"stop",4) == 0) {
+            close(sockfd);
+            is_initialized = false;
+            return NULL;
+        }
+
+        else {
 
             char *message = 
             "Accepted command examples:"
@@ -81,35 +134,6 @@ static void * udp_listener(void *args)
 
             sendto(sockfd, (const char *) message, strlen(message), MSG_CONFIRM,
                 (const struct sockaddr *)&cliaddr, sizeof(cliaddr));
-        }
-
-        else if(strncmp(buffer,"history",7) == 0) {
-            printf("Hooray!\n");
-
-            int len = sampler_getHistorySize();
-            char hist_asStr[MAX_EVENT_TIMESTAMPS*sizeof(double)];
-            double * hist_asDbl = sampler_getHistory(&len);
-            int written;
-            int offset = 0;
-            for(int i = 0; i < len; i++) {
-                // hist_asStr[i] = hist_asDbl[i];
-                if(i % 11 == 0) {
-                    written = snprintf(hist_asStr + offset, 2*sizeof(char),"\n");
-                }
-                else {
-                    if(i != len-1)
-                        written = snprintf(hist_asStr + offset,sizeof(double)+2*sizeof(char),"%0.3f, ",hist_asDbl[i]);
-                    else
-                        written = snprintf(hist_asStr + offset,sizeof(double)+2*sizeof(char),"%0.3f\n",hist_asDbl[i]);
-                }
-                offset += written;
-            }
-
-            printf("%d\n",strlen(hist_asStr));
-
-            sendto(sockfd, (const char *) hist_asStr, strlen(hist_asStr), MSG_CONFIRM,
-                (const struct sockaddr *)&cliaddr, sizeof(cliaddr));
-
         }
 
         snprintf(lastMessage, 50, buffer);
