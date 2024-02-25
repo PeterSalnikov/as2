@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "hal/sampler.h"
+#include "hal/pot.h"
+
+#include"hal/pwm.h"
 #include "udp.h"
 #include "time_helpers.h"
 #include <time.h>
@@ -16,10 +19,13 @@ int main()
     period_init();
     sampler_init();
     udp_init();
+    pot_init();
 
-    while(!udp_isInitialized()) {}
-
+    // while(udp_isInitialized()) {}
+    
+    
     udp_cleanup();
+    printf("Stopping...\n");
     sampler_cleanup();
     period_cleanup();
     

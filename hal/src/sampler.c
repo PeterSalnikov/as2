@@ -70,19 +70,30 @@ static void *sampler_readVoltage(void *arg)
             // printf("%lld\n",size_allSamples);
             // printf("yo?");
             // printf("%d, \n",dips);
+            
             period_getStatisticsAndClear(PERIOD_EVENT_SAMPLE_LIGHT, &statistics);
             printf(
-                "#Smpl/s = %4ld  POT @ HLD => 69Hz   avg = %4.3f    dips = %2d    "
-                "Smpl ms[%5.3f, %5.3f] avg %4.3f\n"
+                "#Smpl/s = %4ld  POT @ %4d => %3dHz   avg = %4.3fV    dips = %2d    "
+                "Smpl ms[%5.3f, %5.3f] avg %4.3f/%3d\n"
                 
-            ,size_currentSamples,average,dips, statistics.minPeriodInMs,statistics.maxPeriodInMs
-            ,statistics.avgPeriodInMs);
-            dips = 0;
+            ,size_currentSamples,pot_getReading(),pot_getFrequency(),average,dips, statistics.minPeriodInMs,statistics.maxPeriodInMs
+            ,statistics.avgPeriodInMs,statistics.numSamples);
+
             pthread_mutex_lock(&s_lock);
             {
                 sampler_moveCurrentDataToHistory();
             }
             pthread_mutex_unlock(&s_lock);
+
+            int step = size_history / NUM_SAMPLES_TO_DISPLAY;
+
+            for(int i = 0; i < size_history; i += step) {
+                printf("%3d: %4.3fV  ",i,history[i]);
+                // printf("%d\n",step);
+            }
+            printf("\n");
+            
+            dips = 0;
             sampleSecondStart = time_getTimeInMs();
         }
 
@@ -148,6 +159,10 @@ void sampler_moveCurrentDataToHistory()
 int sampler_getDips()
 {
     return dips;
+}
+
+long long sampler_getAllSamples() {
+    return size_allSamples;
 }
 
 int sampler_getHistorySize()

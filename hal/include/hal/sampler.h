@@ -24,12 +24,14 @@
 // #include<unistd.h>
 #include "periodTimer.h"
 #include "time_helpers.h"
+#include "pot.h"
 
 #include<pthread.h>
 
 #define IN_VOLTAGE1_RAW_FILE "/sys/bus/iio/devices/iio:device0/in_voltage1_raw"
 #define REF_VOLTAGE 1.8
 #define RESOLUTION 4095
+#define NUM_SAMPLES_TO_DISPLAY 20
 
 void sampler_init(void);
 void sampler_cleanup(void);
@@ -43,11 +45,11 @@ void sampler_moveCurrentDataToHistory(void);
 // will probably call getStatisticsAndClear here.
 // Will also load that data into an array defined here.. make one
 // of a reasonable size
-
+int sampler_getDips(void);
+long long sampler_getAllSamples(void);
 // Get the number of samples collected during the previous complete second.
 int sampler_getHistorySize(void);
-// will probably need my own array here, which consists of just sample counts.
-// Then just get the value of the most recent entry.
+
 
 /* 
 Get a copy of the samples in the sample history.
