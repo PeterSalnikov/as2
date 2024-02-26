@@ -45,7 +45,7 @@ void sampler_moveCurrentDataToHistory(void);
 // will probably call getStatisticsAndClear here.
 // Will also load that data into an array defined here.. make one
 // of a reasonable size
-int sampler_getDips(void);
+int sampler_getDipHistory(void);
 long long sampler_getAllSamples(void);
 // Get the number of samples collected during the previous complete second.
 int sampler_getHistorySize(void);

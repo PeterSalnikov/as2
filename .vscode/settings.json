@@ -11,7 +11,8 @@
         "periodtimer.h": "c",
         "utils.h": "c",
         "unistd.h": "c",
-        "sampler.h": "c"
+        "sampler.h": "c",
+        "display.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

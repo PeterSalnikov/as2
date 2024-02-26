@@ -11,6 +11,7 @@ static double average = 0.0;
 static double currentReading = 0.0;
 
 static int dips = 0;
+static int size_dips = 0;
 static bool hasDipped = false;
 
 static long size_currentSamples = 0;
@@ -67,11 +68,9 @@ static void *sampler_readVoltage(void *arg)
     while(is_initialized && size_currentSamples < MAX_EVENT_TIMESTAMPS) {
 
         if(time_getTimeInMs() - sampleSecondStart >= 1000) {
-            // printf("%lld\n",size_allSamples);
-            // printf("yo?");
-            // printf("%d, \n",dips);
             
             period_getStatisticsAndClear(PERIOD_EVENT_SAMPLE_LIGHT, &statistics);
+            
             printf(
                 "#Smpl/s = %4ld  POT @ %4d => %3dHz   avg = %4.3fV    dips = %2d    "
                 "Smpl ms[%5.3f, %5.3f] avg %4.3f/%3d\n"
@@ -82,6 +81,8 @@ static void *sampler_readVoltage(void *arg)
             pthread_mutex_lock(&s_lock);
             {
                 sampler_moveCurrentDataToHistory();
+                size_dips = dips;
+                dips = 0;
             }
             pthread_mutex_unlock(&s_lock);
 
@@ -93,7 +94,6 @@ static void *sampler_readVoltage(void *arg)
             }
             printf("\n");
             
-            dips = 0;
             sampleSecondStart = time_getTimeInMs();
         }
 
@@ -120,7 +120,9 @@ static void *sampler_readVoltage(void *arg)
 
         if(!hasDipped && currentReading < average - 0.1) {
             hasDipped = true;
+            pthread_mutex_lock(&s_lock);
             dips++;
+            pthread_mutex_unlock(&s_lock);
         }
 
         currentSamples[size_currentSamples] = currentReading;
@@ -156,9 +158,9 @@ void sampler_moveCurrentDataToHistory()
     size_currentSamples = 0;
 }
 
-int sampler_getDips()
+int sampler_getDipHistory()
 {
-    return dips;
+    return size_dips;
 }
 
 long long sampler_getAllSamples() {

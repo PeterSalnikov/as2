@@ -19,6 +19,15 @@ void pot_init()
     }
 }
 
+void pot_cleanup()
+{
+    is_initialized = false;
+    if(pthread_join(tid,NULL) != 0) {
+        perror("Error joining potentiometer thread.\n");
+        exit(1);
+    }
+}
+
 int pot_getReading()
 {
     return pot_reading;
@@ -34,7 +43,7 @@ void *pot_listener(void * args)
     (void) args;
     char *ret = malloc(5*sizeof(char));
 
-    while(1) {
+    while(is_initialized) {
 
         FILE* potFile = fopen(IN_VOLTAGE0_RAW_FILE, "r");
             if(potFile == NULL) {
@@ -48,7 +57,10 @@ void *pot_listener(void * args)
             fclose(potFile);
             pot_reading = atoi(ret);
             pot_frequency = pot_reading / 40;
+
             pwm_setFrequency(pot_frequency);
             // printf("%d\n",atoi(ret)/40);
     }
+    free(ret);
+    return NULL;
 }

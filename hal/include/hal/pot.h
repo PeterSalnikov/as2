@@ -9,6 +9,7 @@
 #define IN_VOLTAGE0_RAW_FILE "/sys/bus/iio/devices/iio:device0/in_voltage0_raw"
 
 void pot_init(void);
+void pot_cleanup(void);
 
 int pot_getReading(void);
 int pot_getFrequency(void);

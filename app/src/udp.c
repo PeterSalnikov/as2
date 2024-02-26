@@ -87,7 +87,7 @@ static void * udp_listener(void *args)
         }
 
         else if(strncmp(buffer,"dips",4) == 0) {
-            snprintf(msg,50,"# Dips: %d\n", sampler_getDips());
+            snprintf(msg,50,"# Dips: %d\n", sampler_getDipHistory());
         }
 
         else if(strncmp(buffer,"history",7) == 0) {
