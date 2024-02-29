@@ -1,11 +1,9 @@
 #include "hal/pwm.h"
-
+// File to control PWM pin.
 static bool is_initialized = false;
 static bool pwm_isOn = false;
 
 static int currentFrequency;
-
-static void runCommand(char *command);
 
 static FILE* pwm_openFile(char *filename);
 static void pwm_closeFile(FILE *file);
@@ -13,24 +11,25 @@ static void pwm_closeFile(FILE *file);
 static void pwm_setPeriod(long long val);
 static void pwm_setDutyCycle(long long val);
 
+// configures pin to PWM and having it start turned off
 void pwm_init()
 {
     is_initialized = true;
+    system("config-pin p9.21 pwm > /dev/null");
     pwm_turnOff();
-    runCommand("~/config-pins.sh");
 }
 
+// turn off the PWM on program exit
 void pwm_cleanup()
 {
     is_initialized = false;
     pwm_turnOff();
 }
 
+// converts frequency to period
 void pwm_setFrequency(int freq)
 {
     if(freq == 0) {
-        // pwm_setPeriod(0);
-        // pwm_setDutyCycle(0);
         pwm_turnOff();
         return;
     }
@@ -101,25 +100,3 @@ static void pwm_closeFile(FILE* file)
     }
 }
 
-static void runCommand(char *command)
-{
-    // Execute the shell command (output into pipe)
-    FILE *pipe = popen(command, "r");
-
-    // Ignore output of the command; but consume it
-    // so we don't get an error when closing the pipe.
-    char buffer[1024];
-    while (!feof(pipe) && !ferror(pipe)) {
-        if(fgets(buffer,sizeof(buffer),pipe) == NULL)
-            break;
-        // printf("--> %s", buffer); //Uncomment for debugging
-    }
-
-    // Get the exit code from the pipe; non-zero is an error:
-    int exitCode = WEXITSTATUS(pclose(pipe));
-    if(exitCode != 0) {
-        perror("Unable to execute command:");
-        printf("    command:    %s\n",command);
-        printf("    exit code:  %d\n", exitCode);
-    }
-}

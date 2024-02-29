@@ -33,6 +33,8 @@ static void *sampler_readVoltage(void *args);
 void sampler_init()
 {
     is_initialized = true;
+    // initializing periodTimer here as sampler depends on it and only one that uses it.
+    period_init();
     if(pthread_create(&tid, NULL, &sampler_readVoltage, NULL) != 0) {
         perror("Error creating sampler thread.\n");
         exit(1);
@@ -45,6 +47,7 @@ void sampler_cleanup()
         perror("Error joining sampler thread.\n");
         exit(1);
     }
+    period_cleanup();
 }
 
 static void *sampler_readVoltage(void *arg)

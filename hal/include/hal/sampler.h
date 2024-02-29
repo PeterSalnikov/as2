@@ -16,12 +16,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<stdbool.h>
-// #include<string.h>
-
-// #include<sys/mman.h>
-// #include<fcntl.h>
-// #include<sys/stat.h>
-// #include<unistd.h>
 #include "periodTimer.h"
 #include "time_helpers.h"
 #include "pot.h"
@@ -36,6 +30,8 @@
 void sampler_init(void);
 void sampler_cleanup(void);
 
+// Header functions courtesy of Dr. Brian Fraser
+
 /* 
 Must be called once every 1s.
 Moves the samples that it has been collecting this second into
@@ -46,10 +42,11 @@ void sampler_moveCurrentDataToHistory(void);
 // Will also load that data into an array defined here.. make one
 // of a reasonable size
 int sampler_getDipHistory(void);
+
 long long sampler_getAllSamples(void);
+
 // Get the number of samples collected during the previous complete second.
 int sampler_getHistorySize(void);
-
 
 /* 
 Get a copy of the samples in the sample history.

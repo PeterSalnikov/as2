@@ -2,15 +2,12 @@
 // display_init(), writeI2cReg() courtesy of Brian Fraser's code and modified to fit use case
 
 static pthread_t tid;
-// static pthread_mutex_t s_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static bool is_initialized = false;
 
 static int i2cFileDesc;
 
-static int dips_cached = 0;
-bool dips_hasChanged = false;
-
+// "Dictionary" of digits, placed in numerical order for fast access
 static const unsigned char a[NUM_SYMBOLS] = {209,192,152,216,200,88,88,2,216,200};
 static const unsigned char b[NUM_SYMBOLS] = {165,4,131,1,34,35,163,5,163,35};
 
@@ -19,9 +16,13 @@ static void writeI2cReg(unsigned char regAddr, unsigned char value);
 static FILE* openI2cFile(char *pin);
 static void closeI2cFile(FILE* file);
 
+// system calls to configure i2c/GPIO input and I2C registers
 void display_init()
 {
-    
+    (void) system("config-pin p9.17 i2c > /dev/null");
+    (void) system("config-pin p9.18 i2c > /dev/null");
+    (void) system("echo out > /sys/class/gpio/gpio44/direction");
+    (void) system("echo out > /sys/class/gpio/gpio61/direction");
     i2cFileDesc = open(I2CDRV_LINUX_BUS1,O_RDWR);
 
     int result = ioctl(i2cFileDesc, I2C_SLAVE, I2C_DEVICE_ADDRESS);
@@ -30,13 +31,25 @@ void display_init()
         exit(1);
     }
 
-    is_initialized = true;
+    writeI2cReg(REG_DIRA, 0x00);
+    writeI2cReg(REG_DIRB, 0x00);
 
+    is_initialized = true;
     if(pthread_create(&tid,NULL, &display_aNumber, NULL) != 0) {
         perror("Error creating 14-seg display thread.\n");
         exit(1);
     }
     
+}
+
+void display_cleanup()
+{
+    is_initialized = false;
+    if(pthread_join(tid,NULL) != 0) {
+        perror("Woops! Error joining 14-segment thread\n");
+        exit(1);
+    }
+    display_turnOffAll();
 }
 
 void display_turnOffAll()
@@ -57,25 +70,41 @@ void display_turnOnOne(char *whichOne)
     closeI2cFile(digit);
 }
 
-// void display_turnOnLeft()
-// {
-//     FILE* left = openI2cFile("l");
-// }
-
+// Thread function parses dip reading as needed and displays on 14-segment
 static void *display_aNumber(void *args)
 {
     (void) args;
     int leftDigit = 0;
     int rightDigit = 0;
-    // const unsigned char a[NUM_SYMBOLS] = {209,192,152,216,200,88,88,2,216,200};
-    // const unsigned char b[NUM_SYMBOLS] = {165,4,131,1,34,35,163,5,163,35};
-    while(1) {
+    long long stopwatch = time_getTimeInMs();
+    int dips;
 
-        // pthread_mutex_lock(&s_lock);
-        int dips = sampler_getDipHistory();
+    while(is_initialized) {
+
+        if(time_getTimeInMs() - stopwatch > 1000) {
+
+            stopwatch = time_getTimeInMs();
+            dips = sampler_getDipHistory();
+
+            if(dips > 99) {
+                leftDigit = 9;
+                rightDigit = 9;
+            }
+            else if (dips < 10) {
+                leftDigit = 0;
+                rightDigit = dips;
+            }
+            else {
+                while(dips) {
+                    rightDigit = dips % 10;
+                    dips /= 10;
+                    leftDigit = dips % 10;
+                    dips /= 10;
+                }
+            }
+        }
 
         display_turnOffAll();
-
         display_setDigit(leftDigit);
         display_turnOnOne(DIGIT_LEFT);
         time_sleepForMs(6);
@@ -85,38 +114,14 @@ static void *display_aNumber(void *args)
         display_turnOnOne(DIGIT_RIGHT);
         time_sleepForMs(6);
 
-        if(dips_cached != dips)
-            dips_hasChanged = true;
-
-        if(!dips_hasChanged)
-            continue;
-
-        if(dips > 99) {
-            leftDigit = 9;
-            rightDigit = 9;
-        }
-        else if (dips < 10) {
-            leftDigit = 0;
-            rightDigit = dips;
-        }
-        else {
-            while(dips) {
-                rightDigit = dips % 10;
-                dips /= 10;
-                leftDigit = dips % 10;
-                dips /= 10;
-            }
-        }
-        dips_cached = dips;
     }
+
     return NULL;
 }
 
+// writes to the I2C registers to set the digit to be displayed
 void display_setDigit(int number)
 {
-    // (void) number;
-    // writeI2cReg(REG_OUTA, a[number]);
-    // writeI2cReg(REG_OUTB, b[number]);
     writeI2cReg(REG_OUTA, a[number]);
     writeI2cReg(REG_OUTB, b[number]);
 }
@@ -139,13 +144,13 @@ static void closeI2cFile(FILE *file)
     }
 }
 
+// Courtesy of Brian's I2C guide
 static void writeI2cReg(unsigned char regAddr, unsigned char value)
 {
     unsigned char buff[2];
     buff[0] = regAddr;
     buff[1] = value;
     int res = write(i2cFileDesc, buff, 2);
-    // (void) write(i2cFileDesc, buff, 2);
 
     if(res != 2) {
         perror("I2C: Unable to write i2c register.\n");

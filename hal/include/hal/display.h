@@ -27,9 +27,11 @@
 #define DIGIT_LEFT "/sys/class/gpio/gpio61/value"
 #define DIGIT_RIGHT "/sys/class/gpio/gpio44/value"
 
-void display_init();
+void display_init(void);
+void display_cleanup(void);
 
+void display_turnOffAll(void);
 void display_setDigit(int number);
-void display_clear();
+void display_clear(void);
 
 #endif

@@ -1,6 +1,5 @@
-// Main program to build the application
-// Has main(); does initialization and cleanup, and includes the game loop in this case.
-
+// Main program:
+// Just responsible for initializing modules and printing shutdown message
 #include <stdio.h>
 #include <stdbool.h>
 #include "hal/sampler.h"
@@ -12,24 +11,28 @@
 #include <time.h>
 #include <stdlib.h>
 
-
 int main()
 {
-    // Initialize all modules; HAL modules first
-    period_init();
+    // Initialize all modules; HAL modules last
+
     sampler_init();
-    udp_init();
     pwm_init();
     pot_init();
     display_init();
-    // while(udp_isInitialized()) {}
+
+    udp_init();
+
+    while(udp_isInitialized()) {}
+    //program runs while socket is open... then shutdowns cascade
     
     udp_cleanup();
+
     printf("Stopping...\n");
-    pwm_cleanup();
+    
+    display_cleanup();
     pot_cleanup();
+    pwm_cleanup();
     sampler_cleanup();
-    period_cleanup();
     
     return 0;
 }

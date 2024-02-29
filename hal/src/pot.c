@@ -59,7 +59,7 @@ void *pot_listener(void * args)
             pot_frequency = pot_reading / 40;
 
             pwm_setFrequency(pot_frequency);
-            // printf("%d\n",atoi(ret)/40);
+
     }
     free(ret);
     return NULL;

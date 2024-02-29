@@ -5,8 +5,9 @@
 #include<stdlib.h>
 #include<stdbool.h>
 
+#include "utils.h"
+
 #define PWM_DIR "/dev/bone/pwm/0/b"
-#define PWM_DIR_LEN 17
 #define NANOSECONDS_IN_A_SECOND 1000000000
 
 void pwm_init(void);
